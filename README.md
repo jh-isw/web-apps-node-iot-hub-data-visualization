@@ -71,7 +71,7 @@ Public/index.html handles the UI layout for the web page, and references the nec
 ### Run locally
 
 1. To pass parameters to the website, you may use environment variables or parameters.
-    - Open a command prompt or PowerShell terminal and set the environment variables **IotHubConnectionString** and **EventHubConsumerGroup**.
+    - Open a command prompt or PowerShell terminal and set the environment variables **IotHubEventHubConnectionString** and **EventHubConsumerGroup**.
 
         > Syntax for Windows command prompt is `set key=value`, PowerShell is `$env:key="value"`, and Linux shell is `export key="value"`.
 
@@ -80,7 +80,7 @@ Public/index.html handles the UI layout for the web page, and references the nec
         ```json
         "env": {
             "NODE_ENV": "local",
-            "IotHubConnectionString": "<your iot hub connection string>",
+            "IotHubEventHubConnectionString": "<your IoT hub's EventHub-compatible connection string>",
             "EventHubConsumerGroup": "<your consumer group name>"
         }
         ```
@@ -166,7 +166,7 @@ In order to automate the steps to deploy to Azure, consider reading the followin
 - [WebApp](https://docs.microsoft.com/en-us/cli/azure/webapp?view=azure-cli-latest)
 
 ```az cli
-# Initialize these variables: $subscriptionId, $resourceGroupName, $location, $iotHubName, $consumerGroupName, $deviceId, $appServicePlanName, $webAppName, $iotHubConnectionString
+# Initialize these variables: $subscriptionId, $resourceGroupName, $location, $iotHubName, $consumerGroupName, $deviceId, $appServicePlanName, $webAppName, $iotHubEventHubConnectionString
 
 # Login and set the specified subscription
 az login
@@ -178,7 +178,17 @@ az group create -n $resourceGroupName --location $location
 # Create an IoT Hub, create a consumer group, add a device, and get the device connection string
 az iot hub create -n $iotHubName -g $resourceGroupName --location $location --sku S1
 az iot hub consumer-group create -n $consumerGroupName --hub-name $iotHubName -g $resourceGroupName
-az iot hub show-connection-string -n $iotHubName -g $resourceGroupName
+
+# There is no way to get a built event hub-compatible connection string using the CLI,
+# however the pieces are available with the 'show-connection-string' and 'policy' commands.
+# Alternatively, one can look in the Azure Portal, under 'Build-in endpoints' to copy the value.
+# The format needs to be:
+# Endpoint=<eventHubEndpoints.events.endpoint>;SharedAccessKeyName=iothubowner;SharedAccessKey=<iot hub connection string's SharedAccessKey>;EntityPath=<eventHubEndpoints.events.path>
+az iot hub show --query properties.eventHubEndpoints.events.endpoint --name {YourIoTHubName}
+az iot hub policy show --name service --query primaryKey --hub-name {YourIoTHubName}
+az iot hub show --query properties.eventHubEndpoints.events.path --name {YourIoTHubName}
+
+
 az iot hub device-identity create -d $deviceId --hub-name $iotHubName -g $resourceGroupName
 az iot hub device-identity show-connection-string  -d $deviceId --hub-name $iotHubName -g $resourceGroupName
 
@@ -187,7 +197,7 @@ az appservice plan create -g $resourceGroupName -n $appServicePlanName --sku F1 
 az webapp create -n $webAppName -g $resourceGroupName --plan $appServicePlanName --runtime "node|10.6"
 az webapp update -n $webAppName -g $resourceGroupName --https-only true
 az webapp config set -n $webAppName -g $resourceGroupName --web-sockets-enabled true
-az webapp config appsettings set -n $webAppName -g $resourceGroupName --settings IotHubConnectionString=$iotHubConnectionString EventHubConsumerGroup=$consumerGroupName
+az webapp config appsettings set -n $webAppName -g $resourceGroupName --settings IotHubEventHubConnectionString=$iotHubEventHubConnectionString EventHubConsumerGroup=$consumerGroupName
 
 # Configure website for deployment
 az webapp deployment list-publishing-credentials -n $webAppName -g $resourceGroupName

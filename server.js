@@ -4,8 +4,20 @@ const WebSocket = require('ws');
 const path = require('path');
 const EventHubReader = require('./scripts/event-hub-reader.js');
 
-const iotHubConnectionString = process.env.IotHubConnectionString;
+const iotHubEventHubConnectionString = process.env.IotHubEventHubConnectionString;
+if (!iotHubEventHubConnectionString) {
+  console.error(`Environment variable IotHubEventHubConnectionString must be specified.`);
+  return;
+}
+console.log(`Using event hub connection string [${iotHubEventHubConnectionString}]`);
+
 const eventHubConsumerGroup = process.env.EventHubConsumerGroup;
+console.log(eventHubConsumerGroup);
+if (!eventHubConsumerGroup) {
+  console.error(`Environment variable EventHubConsumerGroup must be specified.`);
+  return;
+}
+console.log(`Using event hub consumer group [${eventHubConsumerGroup}]`);
 
 // Redirect requests to the public subdirectory to the root
 const app = express();
@@ -34,7 +46,7 @@ server.listen(process.env.PORT || '3000', () => {
   console.log('Listening on %d.', server.address().port);
 });
 
-const eventHubReader = new EventHubReader(iotHubConnectionString, eventHubConsumerGroup);
+const eventHubReader = new EventHubReader(iotHubEventHubConnectionString, eventHubConsumerGroup);
 
 (async () => {
   await eventHubReader.startReadMessage((message, date, deviceId) => {
